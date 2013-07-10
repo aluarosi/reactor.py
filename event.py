@@ -22,7 +22,7 @@ class EventEmitter( object ):
 
     def emit( self, event_type, event_data ):
         for callback in self.listeners[event_type]:
-            callback( self, event_data ) 
+            callback( self, event_type, event_data ) 
 
     
 
