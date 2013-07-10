@@ -44,7 +44,7 @@ if __name__ == "__main__":
         def __init__(self, seconds, callback):
             self.seconds = seconds
             self.old_time = 0
-            self.on(self.INTERVAL, callback)
+            self.on(self.INTERVAL, callback)  # TODO: --> take away from here
         
         def set(self):
             reactor.on('tick', self._handleTick)
@@ -52,7 +52,6 @@ if __name__ == "__main__":
 
         def unset(self):
             reactor.removeListener('tick', self._handleTick)
-            print reactor.listeners
 
         def _handleTick(self, e, t, d):
             new_time = time.time()
@@ -63,10 +62,38 @@ if __name__ == "__main__":
         # Convenience class method
         @staticmethod
         def setInterval(seconds, callback):
-            return Interval(seconds, callback).set()
+            return Interval(seconds, callback).set() # .... and fix this 
      
-            
-              
+    
+    class Timeout(event.EventEmitter):
+        def __init__(self, seconds):
+            self.seconds = seconds
+            self.old_time = 0
+            self.flag = False
+
+        def set(self):
+            reactor.on('tick', self._handleTick)
+            return self   
+
+        def unset(self):
+            reactor.removeListener('tick', self._handleTick)
+    
+        def _handleTick(self, e, t, d):
+            new_time = time.time() 
+            if new_time - self.old_time > self.seconds:
+                if not self.flag:
+                    self.old_time = new_time
+                    self.flag = True 
+                else:
+                    reactor.removeListener('tick', self._handleTick)
+                    self.emit('timeout', self.seconds)
+
+        @staticmethod
+        def setTimeout(seconds, callback):
+            timeout = Timeout(seconds).set()
+            timeout.on('timeout', callback)
+            return timeout
+                   
 
     # Connect everyting
     #reactor.on('tick', handleTick) 
@@ -78,10 +105,18 @@ if __name__ == "__main__":
     i.unset()
     print i.listeners
     i.set()
-    i.removeListener(i.INTERVAL ,doit)
+    #i.removeListener(i.INTERVAL ,doit)
     print i.listeners
     print reactor.listeners
-    i.unset()
+    #i.unset()
+
+    def cancel_interval(i):
+        def cb(e,t,d):
+            i.unset()
+            print "Interval canceled"
+        return cb
+    # TODO --> This is clumsy, if each callback has to have emitter, event_type, event_data...
+    t = Timeout.setTimeout(4, cancel_interval(i));
 
     # Main Loop
     reactor.run()
