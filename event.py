@@ -1,5 +1,5 @@
-// TODO: look at nodejs code lib/event.js
-// error event...
+# TODO: look at nodejs code lib/event.js
+# error event...
 class EventEmitter( object ):
 
     def addListener( self, event_type, callback ):
@@ -27,29 +27,28 @@ class EventEmitter( object ):
     
 
 
-class TestEventEmitter(EventEmitter):
+if __name__ == "__main__":
 
-    def __init__(self):
-        print type(self)
-
-
-
-
-t = TestEventEmitter()
-
-def  f( event_emitter, event_data ):
-    print "In callback f"
-    print event_emitter.listeners
-    print event_data
-
-def g( event_emitter, event_data ):
-    print "g"
-    print event_data
-
-t.on('explosion', f)
-
-t.emit('explosion', None)
-t.emit('explosion', "data")
+    class TestEventEmitter(EventEmitter):
     
-t.on('kk', g)
+        def __init__(self):
+            print type(self)
+    
+    t = TestEventEmitter()
+    
+    def  f( event_emitter, event_data ):
+        print "In callback f"
+        print event_emitter.listeners
+        print event_data
+    
+    def g( event_emitter, event_data ):
+        print "g"
+        print event_data
+    
+    t.on('explosion', f)
+    
+    t.emit('explosion', None)
+    t.emit('explosion', "data")
+        
+    t.on('kk', g)
 
