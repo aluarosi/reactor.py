@@ -33,6 +33,8 @@ class EventEmitter( object ):
             with parameters:    callback( event_emmitter, event_data)
             (Consider if passing along event_type is worth it) 
         """
+        if not hasattr( self, 'listeners' ) or not self.listeners.has_key( event_type ):
+            return
         for callback in self.listeners[event_type]:
             callback( self, event_data ) 
 

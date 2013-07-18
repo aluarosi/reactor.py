@@ -39,6 +39,10 @@ class ReactorAttachable(event.EventEmitter):
         reactor.removeListener('tick', self.handleTick)
         return self
 
+    def handleTick():
+        """ To override """
+        pass
+
 
 class Timeout(ReactorAttachable):
     def __init__(self, seconds):
