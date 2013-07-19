@@ -20,7 +20,7 @@ class Socket(reactor.ReactorAttachable):
             'data'      on data arrived
             'end'       on connection ened
             'error'     should be the generic event for errors
-             
+            'drain'     when write buffer is emptied             
 
     """
 
@@ -40,10 +40,39 @@ class Socket(reactor.ReactorAttachable):
                 print "connection to %s:%s in progress" % (host, port)
             else:
                 raise
+        self.set()
 
-    def write(self):
-        pass
-        
+    def write(self, data):
+        """ We omit the optional nodejs callback function here """
+        """
+            Returns:
+                True    :   if all data was flushed to socket (kernel) buffer
+                False   :   if not all data was flushed. Data is stored into Socket object buffer
+        """
+        w = self.s
+        overflow = len(self.buffer_write) # Buffer status before the write operation
+        self.buffer_write.extend(list(data))
+        # TODO: handle socket send errors
+        # TODO: smell --> socket.send operation it 2 different points
+        n = 0
+        try:
+            n = w.send("".join(self.buffer_write)) # return number of bytes written
+        except socket.error, e:
+            if e.args[0] == errno.EWOULDBLOCK:
+                pass
+            else:
+                raise
+        del self.buffer_write[:n]
+        if self.buffer_write == 0:
+            # All bytes have been sent
+            if self.overflow:
+                # The buffer was full and now it is empty --> emit 'drain'
+                self.emit('drain')
+        else:
+            # Some bytes are accumulating in buffer
+            #   Here we could emit 'overflow' to indicate the buffer is starting to fill
+            pass
+
     def pause(self):
         """ As is nodejs streams, this pauses the reading """
         self.paused = True
@@ -87,10 +116,26 @@ class Socket(reactor.ReactorAttachable):
                     self.emit('data', data )
             except socket.error, e:
                 if e.args[0] == errno.EWOULDBLOCK:
-                    return
+                    pass
                 else:
                     raise
                 
+        # WRITE
+        # Try to write if there is some data left in the write buffer
+        if self.buffer_write:
+            # TODO: handle socket send errors...
+            n = 0
+            try:
+                n = w.send("".join(self.buffer_write)) # return number of bytes written
+            except socket.error, e:
+                if e.args[0] == errno.EWOULDBLOCK:
+                    pass 
+                else:
+                    raise
+            del self.buffer_write[:n]
+            if self.buffer_write == 0:
+                # All bytes have been sent and "drained"
+                self.emit('drain')
             
             
 
@@ -121,22 +166,55 @@ if __name__ == "__main__":
     #reactor.setTimeout(block, 5) 
 
     # TODO: testing Socket while coding it...
-    my_socket = Socket(3000)
-    my_socket.set()
-    def say_hello(emitter, data):
-        print "Hello"
-        print emitter, data
-    def print_read_data(emitter, data):
-        print "read-----",data
-    def end_connection(emitter, data):
-        print "end",data
-    my_socket.on('connect', say_hello )
-    my_socket.on('data', print_read_data )
-    my_socket.on('end', end_connection )
-    my_socket.pause()
-    def resume_socket(emitter, data):
-        my_socket.resume()
-    reactor.setTimeout(resume_socket, 10) 
+    #my_socket = Socket(3000)
+    #def say_hello(emitter, data):
+        #print "Hello"
+        #print emitter, data
+    #def print_read_data(emitter, data):
+        #print "read-----",data
+    #def end_connection(emitter, data):
+        #print "end",data
+    #my_socket.on('connect', say_hello )
+    #my_socket.on('data', print_read_data )
+    #my_socket.on('end', end_connection )
+    ##my_socket.pause()
+    #def resume_socket(emitter, data):
+        #my_socket.resume()
+    ##reactor.setTimeout(resume_socket, 10) 
+    #def send_some_bytes(emitter, data):
+        #my_socket.write("0123456789")
+    ##reactor.setInterval(send_some_bytes, 1.5)
 
+    class WebReader(object):
+        def __init__(self, callback, host, port=80, path=""):
+            self.callback = callback
+            self.host = host
+            self.port = port
+            self.path = path
+            self.socket = Socket(port, host)
+            self.socket.on('connect', self.send_get)
+            self.socket.on('data', self.get_data)
+            self.socket.on('end', self.cb)
+            self.spool = ""
+
+        def cb(self, emitter, data):
+            """ Call back adapter """
+            self.callback(self.spool) 
+            
+        def send_get(self, socket, data):
+            socket.write("GET /%s HTTP/1.0" % (self.path) )
+            socket.write("\n\n")
+
+        def get_data(self, socket, data):
+            #print "got data from %s --- %s " % (socket.s.getpeername(), data)
+            self.spool += data
+
+    #w = WebReader("www.google.es",80)
+    def show_web(data):
+        print data[:100]
+        print
+    w = WebReader(show_web, "localhost",3000, path="dof")
+    w = WebReader(show_web, "localhost",8000)
+    
     # Main Loop
     reactor.reactor.run()
