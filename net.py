@@ -97,7 +97,7 @@ class Socket(reactor.ReactorAttachable):
                     return
                 if e.args[0] == errno.EWOULDBLOCK:
                     self.connected = True
-                    self.emit('connect', self) # Pass through the Socket it self (or 'connection')
+                    self.emit('connect', self) # Pass the Socket itself (or 'connection')
                 else:
                     raise 
 
