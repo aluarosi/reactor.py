@@ -16,8 +16,7 @@ class EventEmitter( object ):
             self.listeners[event_type].append( callback )
 
     # Alias for addListerner 
-    on = addListener
-
+    on = addListener 
     def removeListener( self, event_type, callback ):
         if  hasattr( self, 'listeners' )\
         and self.listeners.has_key( event_type )\
@@ -36,8 +35,37 @@ class EventEmitter( object ):
         if not hasattr( self, 'listeners' ) or not self.listeners.has_key( event_type )\
                                             or not self.listeners[event_type]:
             return
+            
+        """ 
+            Registered CALLBACKS can be functions and/or methods. It works!
+
+            When we register callbacks into an event emitter, they can be:
+                - functions (unbound)
+                - methods (bound to a RECEIVER object)
+            
+            Functions:
+                The callback is called
+                    callback( self, event_data )
+                where self is the event emitter and event_data is the event data
+        
+            Methods:
+                The callback is called 
+                    callback( self, event_data )    
+                But now callback is a bound method, so finally the underlying function is called with 3 params:
+                    1st param -->   receiver object (to which the method is bound) 
+                                    This is 'self' for the receiver object
+                    2nd param -->   'self', which is the event emitter
+                    3rd param -->   'event_data', which is the event data
+
+                Keep in mind that if callback is a method:
+                    callback = receiver.receive
+                    so
+                    callback(self, event_data)  --> receiver.receive(self, event_data) -->
+                    --> ReceiverClass.receive(receiver_instance, self, event_data)
+        """
         for callback in self.listeners[event_type]:
             callback( self, event_data ) 
+
 
 
 if __name__ == "__main__":
